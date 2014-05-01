@@ -91,11 +91,16 @@ import visad.FlatField;
 import visad.RealType;
 import visad.Unit;
 import visad.VisADException;
+import visad.FunctionType;
+import visad.FieldImpl;
+import visad.SampledSet;
+import visad.DateTime;
 
 import visad.data.units.NoSuchUnitException;
 import visad.data.units.ParseException;
 import visad.data.units.Parser;
 import visad.util.Util;
+
 
 /**
  * A data source for NPOESS Preparatory Project (Suomi NPP) data
@@ -158,6 +163,9 @@ public class SuomiNPPDataSource extends HydraDataSource {
     
     // date formatter for how we want to show granule day/time on display
     SimpleDateFormat sdfOut = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z");
+    
+    // MJH keep track of date to add time dim to FieldImpl
+    Date theDate;
 
     /**
      * Zero-argument constructor for construction via unpersistence.
@@ -363,6 +371,7 @@ public class SuomiNPPDataSource extends HydraDataSource {
 	    	    							String sTime = aTime.getStringValue();
 	    	    							logger.debug("For day/time, using: " + sDate + sTime.substring(0, sTime.indexOf('Z') - 3));
 	    	    							Date d = sdf.parse(sDate + sTime.substring(0, sTime.indexOf('Z') - 3));
+	    	    							theDate = d;
 	    	    							foundDateTime = true;
 	    	    							// set time for display to day/time of 1st granule examined
 	    	    							if (! nameHasBeenSet) {
@@ -1391,6 +1400,15 @@ public class SuomiNPPDataSource extends HydraDataSource {
             e.printStackTrace();
             logger.error("getData exception e=" + e);
         }
+        ////////// MJH return FieldImpl with time dim ////////////////////
+        List dateTimes = new ArrayList();
+        dateTimes.add(new DateTime(theDate));
+        SampledSet timeSet = (SampledSet) ucar.visad.Util.makeTimeSet(dateTimes);
+        FunctionType ftype = new FunctionType(RealType.Time, data.getType());
+        FieldImpl fi = new FieldImpl(ftype, timeSet);
+        fi.setSample(0, data);
+        data = fi;
+        //////////////////////////////////////////////////////////////////
         return data;
     }
 
