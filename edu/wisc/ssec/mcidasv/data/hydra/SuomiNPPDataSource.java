@@ -1443,7 +1443,13 @@ public class SuomiNPPDataSource extends HydraDataSource {
       else {
     	  if (hasImagePreview) {
     		  try {
-    			  FlatField image = (FlatField) dataChoice.getData(null);
+    			  Object thing = dataChoice.getData(null);
+    			  FlatField image = null;
+    			  if (thing instanceof FlatField) {
+    				  image = (FlatField) thing;
+    			  } else if (thing instanceof FieldImpl) {
+    				  image = (FlatField) ((FieldImpl) thing).getSample(0);
+    			  }
     			  components.add(new PreviewSelection(dataChoice, image, null));
     		  } catch (Exception e) {
     			  logger.error("Can't make PreviewSelection: " + e);
