@@ -608,6 +608,9 @@ public abstract class CrossSectionControl extends GridDisplayControl implements 
                     setPosition(startLoc, endLoc);
                 } else if (start == null) {
                     MapProjection mp       = getDataProjection();
+                    if (mp == null) {
+                        mp = (MapProjection) (GridUtil.getSpatialDomain(getGridDataInstance().getGrid(false)).getCoordinateSystem());
+                    }
                     Rectangle2D   rect     = mp.getDefaultMapArea();
                     LatLonPoint   startLLP = mp.getLatLon(new double[][] {
                         { rect.getX() }, { rect.getCenterY() }

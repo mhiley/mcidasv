@@ -41,7 +41,7 @@ import visad.georef.MapProjection;
 import java.awt.geom.Rectangle2D;
 
 
-public class LongitudeLatitudeCoordinateSystem extends CoordinateSystem {
+public class LongitudeLatitudeCoordinateSystem extends MapProjection {
 //public class LongitudeLatitudeCoordinateSystem extends MapProjection {
 
    Linear2DSet domainSet;
