@@ -3110,6 +3110,19 @@ def loadFile(*args, **kwargs):
     """Placeholder to redirect user to renamed function."""
     raise NotImplementedError("The name of loadFile has changed to loadGrid.  You'll need to update your scripts.  Sorry for the hassle!")
 
+def _get_abi_time_from_filename(ff):
+    from os.path import basename
+    from datetime import datetime
+    doe_abi_regex = "OT_ABI-L2-CMI([A-Z]{2})-([A-Z0-9]{3})([0-9]{2})_G16_s([0-9]{14})_e([0-9]{14})_c([0-9]{14})\.nc"
+    if hasattr(ff, 'filename'):
+        m = re.match(doe_abi_regex, basename(ff.filename))
+        if m:
+            # e.g. 20143092000343; strip off the fraction of second for now
+            dt = datetime.strptime(m.group(4)[:-1], '%Y%j%H%M%S')
+            # return as visad.DateTime.createTime friendly string:
+            return dt.strftime('%Y-%m-%d %H:%M:%SZ')
+    return None
+
 def makeFlatFieldSequence(sequence):
     """Turn list of _MappedGeoGridFlatField's into a FieldImpl with time domain that is suitable for displaying.
 
@@ -3130,9 +3143,13 @@ def makeFlatFieldSequence(sequence):
                 timeAxis = ff.geogrid.getCoordinateSystem().getTimeAxis1D()
                 dateTimes.append(DataUtil.makeDateTimes(timeAxis)[0])
             else:
-                # fix for ABI data / data with no time coord: just return plain FF
-                # this will allow data to get displayed, but w/o time info
-                return ff
+                abi_time = _get_abi_time_from_filename(ff) 
+                if abi_time:
+                    dateTimes.append(DateTime.createDateTime(abi_time))
+                else:
+                    # worst case, just return plain flatfield. it will still
+                    # display, just w/o time info.
+                    return ff
     except AttributeError:
         # no geogrid ... try to read from getMetadataMap
         if sequence[0].getMetadataMap().get('times'):
@@ -3288,3 +3305,19 @@ def loadVIIRSImage(file_list, field, stride=None, xStride=1, yStride=1, **kwargs
 
     return mapped_ff
 
+def loadAbiDoe(filename=None):
+    """Test code for loading "DOE" format simulated ABI files."""
+    from ucar.nc2.dt.grid import GridDataset
+    from ucar.unidata.data.grid import GeoGridAdapter
+    dataType = 'Grid files (netCDF/GRIB/OPeNDAP/GEMPAK)'
+    field = 'CMI'
+    dataSource = createDataSource(filename, dataType)
+    gridDataset = GridDataset.open(filename)
+    geogrid = gridDataset.findGridByName(field)
+    if not geogrid:
+        raise ValueError('Failed to create geogrid.')
+    adapter = GeoGridAdapter(dataSource.getJavaInstance(), geogrid)
+    ff = adapter.getFlatField(0, "")
+    ff = make2D(ff)
+    mapped = _MappedGeoGridFlatField(ff, geogrid, filename, field, None, dataSource.toString())
+    return mapped
