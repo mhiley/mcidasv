@@ -35,8 +35,45 @@ public class SandwichSpeedup {
 
     private static final Logger logger = LoggerFactory.getLogger(SandwichSpeedup.class);
 
-    public static void sandwichSpeedup(float[] floats) {
+    public static void sandwichSpeedup( float[] scaledFloats,
+                                        float[] floatsIR,
+                                        float[] rFloats,
+                                        float[] gFloats,
+                                        float[] bFloats,
+                                        float[] rTable,
+                                        float[] gTable,
+                                        float[] bTable,
+                                        float minIR,
+                                        float maxIR,
+                                        int nCols) {
         logger.info("Inside sandwichSpeedup");
+        int noIRContribution = 1;
+        for (int i=0; i<scaledFloats.length; i++) {
+           // set anything colder than threshold to r,g,b from color table,
+           // otherwise just set to 1 (so that result after multiply is just the vis image)
+           if (floatsIR[i] < maxIR) {
+
+               // if anything falls below the minIR, set it to the minIR (scaledFloats=0)
+               if (floatsIR[i] < minIR) {
+                  // java conversion note: "pixel" is just scaledFloats at current index
+                  scaledFloats[i] = 0;
+               }
+
+               // need to convert float ranging from 0.0 to 1.0 into integer index
+               // ranging from 0 to nCols
+               // testing
+
+               int ind = (int)(scaledFloats[i]*nCols);
+               
+               rFloats[i] = rTable[ind];
+               gFloats[i] = gTable[ind];
+               bFloats[i] = bTable[ind];
+           } else {
+               rFloats[i] = noIRContribution;    // previously was set to 1
+               gFloats[i] = noIRContribution;    // see note for rFloats
+               bFloats[i] = noIRContribution;    // see note for rFloats
+           }
+        }
     }
     
 }
