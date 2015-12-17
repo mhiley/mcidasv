@@ -119,6 +119,8 @@ public class MultiDimensionDataSource extends HydraDataSource {
     private boolean hasImagePreview = false;
     private boolean hasTrackPreview = false;
 
+    private TrackSelection trackSelection;
+
     /**
      * Zero-argument constructor for construction via unpersistence.
      */
@@ -960,8 +962,8 @@ public class MultiDimensionDataSource extends HydraDataSource {
             if (ginfo != null) {
               subset = adapter.getSubsetFromLonLatRect(ginfo.getMinLat(), ginfo.getMaxLat(),
                                                        ginfo.getMinLon(), ginfo.getMaxLon(),
-                                                       geoSelection.getXStride(),
-                                                       geoSelection.getYStride(),
+                                                       trackSelection.trackStride,
+                                                       trackSelection.verticalStride,
                                                        geoSelection.getZStride());
               if (subset == null && select != null) {
                 subset = select.getSubset();
@@ -1053,7 +1055,8 @@ public class MultiDimensionDataSource extends HydraDataSource {
       if (hasTrackPreview) {
         try {
           FlatField track = track_adapter.getData(track_adapter.getDefaultSubset());
-          components.add(new TrackSelection(dataChoice, track, this));
+            this.trackSelection = new TrackSelection(dataChoice, track, this);
+          components.add(trackSelection);
         } catch (Exception e) {
           logger.error("cannot make preview selection", e);
         }
