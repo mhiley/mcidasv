@@ -36,10 +36,9 @@ import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
+import java.beans.PropertyChangeEvent;
 import java.rmi.RemoteException;
-import java.util.ArrayList;
-import java.util.Hashtable;
-import java.util.List;
+import java.util.*;
 
 import javax.swing.JButton;
 import javax.swing.JComponent;
@@ -67,6 +66,7 @@ import ucar.unidata.data.DataSource;
 import ucar.unidata.data.gis.WmsDataSource;
 import ucar.unidata.data.imagery.AddeImageDataSource;
 import ucar.unidata.data.imagery.ImageDataSource;
+import ucar.visad.display.Animation;
 import visad.Data;
 import visad.DateTime;
 import visad.FieldImpl;
@@ -122,6 +122,8 @@ public class ImagePlanViewControl extends ucar.unidata.idv.control.ImagePlanView
     /** save parameter set */
     private JFrame saveWindow;
 
+    private MyTabbedPane tab;
+
     private static String newFolder;
 
     private XmlTree xmlTree;
@@ -165,10 +167,13 @@ public class ImagePlanViewControl extends ucar.unidata.idv.control.ImagePlanView
 
     private McIDASVHistogramWrapper histoWrapper;
 
+    Map<Integer, JPanel> histogramPanels;
+
     public ImagePlanViewControl() {
         super();
         logger.trace("created new imageplanviewcontrol={}", Integer.toHexString(hashCode()));
         this.imageDefaults = getImageDefaults();
+        histogramPanels = new HashMap<>();
     }
 
     @Override public boolean init(DataChoice dataChoice) 
@@ -220,7 +225,7 @@ public class ImagePlanViewControl extends ucar.unidata.idv.control.ImagePlanView
      */
     public Container doMakeContents() {
         try {
-            JTabbedPane tab = new MyTabbedPane();
+            tab = new MyTabbedPane();
             tab.add("Settings",
                 GuiUtils.inset(GuiUtils.top(doMakeWidgetComponent()), 5));
             
@@ -257,11 +262,26 @@ public class ImagePlanViewControl extends ucar.unidata.idv.control.ImagePlanView
     }
 
     protected JComponent getHistogramTabComponent() {
+        // mjh default to original behavior (just show 0th index of image sequence)
+        //     if not specified
+        return getHistogramTabComponent(0);
+    }
+
+    /**
+     *
+     * @param index If histogramming an image sequence, what index to histogram
+     * @return
+     */
+    protected JComponent getHistogramTabComponent(int index) {
         List choices = new ArrayList();
         if (datachoice == null) {
             datachoice = getDataChoice();
         }
         choices.add(datachoice);
+        if (histogramPanels.containsKey(index)) {
+            logger.info("Using cached JPanel");
+            return histogramPanels.get(index);
+        }
         histoWrapper = new McIDASVHistogramWrapper("histo", choices, (DisplayControlImpl)this);
         dataSource = getDataSource();
 
@@ -270,7 +290,7 @@ public class ImagePlanViewControl extends ucar.unidata.idv.control.ImagePlanView
                 image = (FlatField)((ComboDataChoice)datachoice).getData();
                 histoWrapper.loadData(image);
             } catch (Exception e) {
-                
+
             }
         } else {
             Hashtable props = dataSource.getProperties();
@@ -295,14 +315,14 @@ public class ImagePlanViewControl extends ucar.unidata.idv.control.ImagePlanView
                     } else if (data instanceof FlatField) {
                         image = (FlatField) data;
                     } else if (data instanceof FieldImpl) {
-                        image = (FlatField) ((FieldImpl)data).getSample(0, false);
+                        image = (FlatField) ((FieldImpl)data).getSample(index, false);
                     }
                     else {
                         throw new Exception("Histogram must be made from a FlatField");
                     }
                 }
                 if ((seq != null) && (seq.getImageCount() > 0)) {
-                    image = (FlatField)seq.getImage(0);
+                    image = (FlatField)seq.getImage(index);
                 }
                 histoWrapper.loadData(image);
             } catch (Exception e) {
@@ -319,7 +339,11 @@ public class ImagePlanViewControl extends ucar.unidata.idv.control.ImagePlanView
         });
         JPanel resetPanel =
             GuiUtils.center(GuiUtils.inset(GuiUtils.wrap(resetButton), 4));
-        return GuiUtils.centerBottom(histoComp, resetPanel);
+
+
+        JPanel result = GuiUtils.centerBottom(histoComp, resetPanel);
+        histogramPanels.put(index, result);
+        return result;
     }
 
     protected void contrastStretch(double low, double high) {
@@ -959,6 +983,12 @@ public class ImagePlanViewControl extends ucar.unidata.idv.control.ImagePlanView
         return newChild;
     }
 
+    @Override
+    public void propertyChange(PropertyChangeEvent evt) {
+        super.propertyChange(evt);
+        tab.stateChanged(null);
+    }
+
     /**
      * Holds a JFreeChart histogram of image values.
      */
@@ -989,7 +1019,9 @@ public class ImagePlanViewControl extends ucar.unidata.idv.control.ImagePlanView
             if (index >= 0 && getTitleAt(index).equals("Histogram") && !haveDoneHistogramInit) {
                 getIdv().showWaitCursor();
                 this.setComponentAt(index,
-                        GuiUtils.inset(getHistogramTabComponent(),5));
+                        GuiUtils.inset(getHistogramTabComponent(
+                                getViewManager().getAnimation().getCurrent()
+                        ),5));
                 setInitialHistogramRange();
                 getIdv().clearWaitCursor();
 //                haveDoneHistogramInit = true;

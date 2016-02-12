@@ -2819,6 +2819,8 @@ public abstract class DisplayControlImpl extends DisplayControlBase implements D
         if (initializationDone && getActive()
                 && evt.getPropertyName().equals(Animation.ANI_VALUE)) {
 
+            logger.info("animation event {}", evt);
+
             Animation animation = null;
             if ((evt.getSource() != null)
                     && (evt.getSource() instanceof Animation)) {
